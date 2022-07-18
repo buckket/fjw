@@ -21,5 +21,7 @@ jobs:
     - name: Build
       run: go build -v ./...
 
-    - name: Test
-      run: go test -v ./...
+    - name: Publish
+      run: ./deploy.sh
+      env:
+        DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
