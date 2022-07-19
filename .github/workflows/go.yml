@@ -21,6 +21,9 @@ jobs:
       with:
         go-version: 1.18
 
+    - name: Install xsltproc
+      run: sudo apt-get -y install xsltproc
+
     - name: Build
       run: go build -v ./...
 

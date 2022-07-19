@@ -16,7 +16,9 @@ git checkout "$target_branch"
 git rebase "${remote_name}/${main_branch}"
 
 ./fjw
+xsltproc fjw.xsl fjw.rss > index.html
 git add "fjw.rss"
+git add "index.html"
 
 git commit -m "updated GitHub Pages"
 if [ $? -ne 0 ]; then
