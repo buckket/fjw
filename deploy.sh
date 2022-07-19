@@ -20,11 +20,7 @@ xsltproc fjw.xsl fjw.rss > index.html
 git add "fjw.rss"
 git add "index.html"
 
-git commit -m "updated GitHub Pages"
-if [ $? -ne 0 ]; then
-    echo "nothing to commit"
-    exit 0
-fi
+git diff-index --quiet HEAD || git commit -m "updated GitHub Pages"
 
 git remote set-url "$remote_name" "$repo_uri" # includes access token
 git push --force-with-lease "$remote_name" "$target_branch"
