@@ -87,11 +87,15 @@ func ScrapeEntry(post *Post) {
 	}
 	post.Timestamp = datetime
 
-	body, err := article.Find("div.article-body").Html()
+	body := article.Find("div.article-body")
+	if body.Children().Last().Text() != "Ihr Franz Josef Wagner" {
+		body.Children().Last().Remove()
+	}
+
+	post.Body, err = body.Html()
 	if err != nil {
 		log.Fatal(err)
 	}
-	post.Body = body
 
 	post.Description = article.Find("div.article-body").Children().First().Text()
 }
