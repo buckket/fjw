@@ -101,7 +101,7 @@ func main() {
 	feed := &feeds.Feed{
 		Title:       "Post von Wagner",
 		Link:        &feeds.Link{Href: "https://www.bild.de/themen/personen/franz-josef-wagner/kolumne-17304844.bild.html"},
-		Description: "Franz Josef Wagner ist seit 2001 Chefkolumnist im Hause Axel Springer.",
+		Description: "Franz Josef Wagner ist seit 2001 Chefkolumnist im Hause Axel Springer",
 		Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
 		Created:     now,
 	}
@@ -114,17 +114,12 @@ func main() {
 			Link:        &feeds.Link{Href: fmt.Sprintf("https://www.bild.de/%s", post.URL)},
 			Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
 			Description: post.Description,
-			Id:          post.URL,
+			Id:          fmt.Sprintf("https://www.bild.de/%s", post.URL),
 			Created:     post.Timestamp,
 			Content:     post.Body,
 		}
-		feed.Items = append(feed.Items, &item)
+		feed.Add(&item)
 		fmt.Printf("Post %d: %s (%s)\n", i, post.Title, post.URL)
-	}
-
-	rss, err := feed.ToRss()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	file, err := os.Create("fjw.rss")
@@ -133,7 +128,7 @@ func main() {
 	}
 	defer file.Close()
 
-	_, err = file.WriteString(rss)
+	err = feed.WriteRss(file)
 	if err != nil {
 		log.Fatal(err)
 	}
