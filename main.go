@@ -97,13 +97,11 @@ func ScrapeEntry(post *Post) {
 }
 
 func main() {
-	now := time.Now()
 	feed := &feeds.Feed{
 		Title:       "Post von Wagner",
 		Link:        &feeds.Link{Href: "https://www.bild.de/themen/personen/franz-josef-wagner/kolumne-17304844.bild.html"},
 		Description: "Franz Josef Wagner ist seit 2001 Chefkolumnist im Hause Axel Springer",
 		Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
-		Created:     now,
 	}
 
 	posts := ScrapePosts()
@@ -119,6 +117,9 @@ func main() {
 			Content:     post.Body,
 		}
 		feed.Add(&item)
+		if item.Created.After(feed.Created) {
+			feed.Created = item.Created
+		}
 		fmt.Printf("Post %d: %s (%s)\n", i, post.Title, post.URL)
 	}
 
