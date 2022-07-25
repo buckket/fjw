@@ -108,7 +108,7 @@ func tweet(post Post) {
 	twitter := anaconda.NewTwitterApiWithCredentials(os.Getenv("APP_KEY"),
 		os.Getenv("APP_SECRET"),
 		os.Getenv("OAUTH_TOKEN"),
-		os.Getenv("OAUTH_SECRET"))
+		os.Getenv("OAUTH_TOKEN_SECRET"))
 	_, err := twitter.GetSelf(url.Values{})
 
 	if err != nil {
