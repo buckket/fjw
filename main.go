@@ -1,21 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gorilla/feeds"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
 
 type Post struct {
-	URL         string
-	Title       string
-	Timestamp   time.Time
-	Body        string
-	Description string
+	URL         string    `json:"url"`
+	Title       string    `json:"title"`
+	Timestamp   time.Time `json:"timestamp"`
+	Body        string    `json:"-"`
+	Description string    `json:"-"`
 }
 
 func ScrapePosts() (posts []Post) {
@@ -100,6 +104,52 @@ func ScrapeEntry(post *Post) {
 	post.Description = article.Find("div.article-body").Children().First().Text()
 }
 
+func tweet(post Post) {
+	twitter := anaconda.NewTwitterApiWithCredentials(os.Getenv("APP_KEY"),
+		os.Getenv("APP_SECRET"),
+		os.Getenv("OAUTH_TOKEN"),
+		os.Getenv("OAUTH_SECRET"))
+	_, err := twitter.GetSelf(url.Values{})
+
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	var lastPost Post
+
+	file, err := ioutil.ReadFile("tweet.json")
+	if err != nil {
+		log.Print(err)
+	}
+	err = json.Unmarshal(file, &lastPost)
+	if err != nil {
+		log.Print(err)
+	}
+
+	if post.Timestamp.After(lastPost.Timestamp) && post.URL != lastPost.URL {
+		_, err := twitter.PostTweet(fmt.Sprintf("%s %s", post.Title, post.URL), url.Values{})
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		log.Printf("New tweet was created\n")
+	}
+
+	lastPost = post
+	file, err = json.Marshal(lastPost)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	err = ioutil.WriteFile("tweet.json", file, 0644)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+}
+
 func main() {
 	feed := &feeds.Feed{
 		Title:       "Post von Wagner",
@@ -109,22 +159,22 @@ func main() {
 	}
 
 	posts := ScrapePosts()
-	for i, post := range posts {
-		ScrapeEntry(&post)
+	for i, _ := range posts {
+		ScrapeEntry(&posts[i])
 		item := feeds.Item{
-			Title:       post.Title,
-			Link:        &feeds.Link{Href: fmt.Sprintf("https://www.bild.de/%s", post.URL)},
+			Title:       posts[i].Title,
+			Link:        &feeds.Link{Href: fmt.Sprintf("https://www.bild.de/%s", posts[i].URL)},
 			Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
-			Description: post.Description,
-			Id:          fmt.Sprintf("https://www.bild.de/%s", post.URL),
-			Created:     post.Timestamp,
-			Content:     post.Body,
+			Description: posts[i].Description,
+			Id:          fmt.Sprintf("https://www.bild.de/%s", posts[i].URL),
+			Created:     posts[i].Timestamp,
+			Content:     posts[i].Body,
 		}
 		feed.Add(&item)
 		if item.Created.After(feed.Created) {
 			feed.Created = item.Created
 		}
-		fmt.Printf("Post %d: %s (%s)\n", i, post.Title, post.URL)
+		fmt.Printf("Post %d: %s (%s)\n", i, posts[i].Title, posts[i].URL)
 	}
 
 	file, err := os.Create("fjw.rss")
@@ -136,5 +186,9 @@ func main() {
 	err = feed.WriteRss(file)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if len(posts) > 0 {
+		tweet(posts[0])
 	}
 }

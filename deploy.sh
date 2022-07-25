@@ -19,6 +19,7 @@ git rebase "${remote_name}/${main_branch}"
 xsltproc fjw.xsl fjw.rss > index.html
 git add "fjw.rss"
 git add "index.html"
+git add "tweet.json"
 
 git diff-index --quiet HEAD || git commit -m "updated GitHub Pages"
 
