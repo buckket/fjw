@@ -31,3 +31,7 @@ jobs:
       run: ./deploy.sh
       env:
         DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        APP_KEY: ${{ secrets.APP_KEY }}
+        APP_SECRET: ${{ secrets.APP_SECRET }}
+        OAUTH_TOKEN: ${{ secrets.OAUTH_TOKEN }}
+        OAUTH_TOKEN_SECRET: ${{ secrets.OAUTH_TOKEN_SECRET }}

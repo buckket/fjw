@@ -105,7 +105,6 @@ func ScrapeEntry(post *Post) {
 }
 
 func tweet(post Post) {
-	log.Print(os.Getenv("OAUTH_TOKEN"))
 	twitter := anaconda.NewTwitterApiWithCredentials(
 		os.Getenv("OAUTH_TOKEN"),
 		os.Getenv("OAUTH_TOKEN_SECRET"),
