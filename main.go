@@ -111,7 +111,6 @@ func tweet(post Post) {
 		os.Getenv("APP_KEY"),
 		os.Getenv("APP_SECRET"))
 	_, err := twitter.GetSelf(url.Values{})
-
 	if err != nil {
 		log.Print(err)
 		return
@@ -129,7 +128,7 @@ func tweet(post Post) {
 	}
 
 	if post.Timestamp.After(lastPost.Timestamp) && post.URL != lastPost.URL {
-		_, err := twitter.PostTweet(fmt.Sprintf("%s %s", post.Title, post.URL), url.Values{})
+		_, err := twitter.PostTweet(fmt.Sprintf("%s https://www.bild.de/%s", post.Title, post.URL), url.Values{})
 		if err != nil {
 			log.Print(err)
 			return
