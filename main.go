@@ -60,7 +60,7 @@ func ScrapePosts() (posts []Post) {
 }
 
 func ScrapeEntry(post *Post) {
-	res, err := http.Get(fmt.Sprintf("https://www.bild.de%s", post.URL))
+	res, err := http.Get(fmt.Sprintf("https://www.bild.de/%s", post.URL))
 	if err != nil {
 		log.Fatal(err)
 	}
