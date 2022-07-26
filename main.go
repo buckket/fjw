@@ -22,6 +22,10 @@ type Post struct {
 	Description string    `json:"-"`
 }
 
+func (p *Post) CompleteURL() string {
+	return fmt.Sprintf("https://www.bild.de%s", p.URL)
+}
+
 func ScrapePosts() (posts []Post) {
 	res, err := http.Get("https://www.bild.de/themen/personen/franz-josef-wagner/kolumne-17304844.bild.html")
 	if err != nil {
@@ -60,7 +64,7 @@ func ScrapePosts() (posts []Post) {
 }
 
 func ScrapeEntry(post *Post) {
-	res, err := http.Get(fmt.Sprintf("https://www.bild.de%s", post.URL))
+	res, err := http.Get(post.CompleteURL())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,7 +132,7 @@ func tweet(post Post) {
 	}
 
 	if post.Timestamp.After(lastPost.Timestamp) && post.URL != lastPost.URL {
-		_, err := twitter.PostTweet(fmt.Sprintf("%s https://www.bild.de%s", post.Title, post.URL), url.Values{})
+		_, err := twitter.PostTweet(fmt.Sprintf("%s %s", post.Title, post.CompleteURL()), url.Values{})
 		if err != nil {
 			log.Print(err)
 			return
@@ -163,10 +167,10 @@ func main() {
 		ScrapeEntry(&posts[i])
 		item := feeds.Item{
 			Title:       posts[i].Title,
-			Link:        &feeds.Link{Href: fmt.Sprintf("https://www.bild.de%s", posts[i].URL)},
+			Link:        &feeds.Link{Href: posts[i].CompleteURL()},
 			Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
 			Description: posts[i].Description,
-			Id:          fmt.Sprintf("https://www.bild.de/%s", posts[i].URL),
+			Id:          posts[i].CompleteURL(),
 			Created:     posts[i].Timestamp,
 			Content:     posts[i].Body,
 		}
