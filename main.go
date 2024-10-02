@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -22,12 +24,8 @@ type Post struct {
 	Description string    `json:"-"`
 }
 
-func (p *Post) CompleteURL() string {
-	return fmt.Sprintf("https://www.bild.de%s", p.URL)
-}
-
 func ScrapePosts() (posts []Post) {
-	res, err := http.Get("https://www.bild.de/themen/personen/franz-josef-wagner/kolumne-17304844.bild.html")
+	res, err := http.Get("https://www.bild.de/autor/franz-josef-wagner")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,14 +41,14 @@ func ScrapePosts() (posts []Post) {
 		return nil
 	}
 
-	doc.Find(".hentry.landscape.t10l").Each(func(i int, s *goquery.Selection) {
-		kicker := s.Find(".kicker").Text()
+	doc.Find("article .author-recommendation__article").Each(func(i int, s *goquery.Selection) {
+		kicker := s.Find(".teaser__title__kicker").Text()
 		if kicker != "Post von Wagner" {
-			log.Printf("Wrong kicker, skipping: %s", kicker)
+			log.Printf("Wrong kicker, skipping: %s\n", kicker)
 			return
 		}
 
-		title := s.Find("span.headline").Text()
+		title := s.Find(".teaser__title__headline").Text()
 		url, exists := s.Find("a").Attr("href")
 		if !exists {
 			log.Printf("could not extract URL")
@@ -63,8 +61,65 @@ func ScrapePosts() (posts []Post) {
 	return posts
 }
 
+func ScrapeArchive() (posts []Post) {
+	csvFile, err := os.Create("fjw.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer csvFile.Close()
+
+	csvWriter := csv.NewWriter(csvFile)
+	defer csvWriter.Flush()
+
+	startDate := time.Date(2006, 1, 1, 0, 0, 0, 0, &time.Location{})
+	//startDate := time.Date(2008, 2, 1, 0, 0, 0, 0, &time.Location{})
+
+	//endDate := time.Date(2008, 2, 15, 0, 0, 0, 0, &time.Location{})
+	endDate := time.Now()
+
+	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
+		fmt.Printf("Working on: %s\n", fmt.Sprintf("https://www.bild.de/archive/%d/%d/%d/index.html", date.Year(), date.Month(), date.Day()))
+
+		res, err := http.Get(fmt.Sprintf("https://www.bild.de/archive/%d/%d/%d/index.html", date.Year(), date.Month(), date.Day()))
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != 200 {
+			log.Printf("status code error: %d %s", res.StatusCode, res.Status)
+			continue
+		}
+
+		doc, err := goquery.NewDocumentFromReader(res.Body)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+
+		doc.Find(".txt a").Each(func(i int, s *goquery.Selection) {
+			if strings.HasPrefix(s.Text(), "Post von Wagner") {
+				url, exists := s.Attr("href")
+				if !exists {
+					log.Printf("could not extract URL")
+					return
+				}
+				post := Post{Title: strings.TrimPrefix(s.Text(), "Post von Wagner: "), URL: url}
+				posts = append(posts, post)
+				fmt.Printf("New post: %s (%s)", post.Title, post.URL)
+
+				csvWriter.Write([]string{post.URL, post.Title})
+			}
+		})
+
+	}
+
+	return posts
+}
+
 func ScrapeEntry(post *Post) {
-	res, err := http.Get(post.CompleteURL())
+	res, err := http.Get(post.URL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -87,6 +142,9 @@ func ScrapeEntry(post *Post) {
 
 	timestamp, ok := article.Find("time.datetime").Attr("datetime")
 	if !ok {
+		timestamp, ok = article.Find("time.authors__pubdate").Attr("datetime")
+	}
+	if !ok {
 		log.Printf("could not extract timestamp")
 	}
 	datetime, err := time.Parse(time.RFC3339, timestamp)
@@ -106,6 +164,10 @@ func ScrapeEntry(post *Post) {
 	}
 
 	post.Description = article.Find("div.article-body").Children().First().Text()
+	if len(post.Description) == 0 {
+		article.Find("div.txt").Children().Filter("p:nth-last-child(-n+2)").Remove()
+		post.Description = article.Find("div.txt").Children().Filter("p").Text()
+	}
 }
 
 func tweet(post Post) {
@@ -132,7 +194,7 @@ func tweet(post Post) {
 	}
 
 	if post.Timestamp.After(lastPost.Timestamp) && post.URL != lastPost.URL {
-		_, err := twitter.PostTweet(fmt.Sprintf("%s %s", post.Title, post.CompleteURL()), url.Values{})
+		_, err := twitter.PostTweet(fmt.Sprintf("%s %s", post.Title, post.URL), url.Values{})
 		if err != nil {
 			log.Print(err)
 			return
@@ -162,15 +224,17 @@ func main() {
 		Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
 	}
 
+	//posts := ScrapeArchive()
 	posts := ScrapePosts()
+
 	for i, _ := range posts {
 		ScrapeEntry(&posts[i])
 		item := feeds.Item{
 			Title:       posts[i].Title,
-			Link:        &feeds.Link{Href: posts[i].CompleteURL()},
+			Link:        &feeds.Link{Href: posts[i].URL},
 			Author:      &feeds.Author{Name: "Franz Josef Wagner", Email: "fjwagner@bild.de"},
 			Description: posts[i].Description,
-			Id:          posts[i].CompleteURL(),
+			Id:          posts[i].URL,
 			Created:     posts[i].Timestamp,
 			Content:     posts[i].Body,
 		}
@@ -190,9 +254,5 @@ func main() {
 	err = feed.WriteRss(file)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	if len(posts) > 0 {
-		tweet(posts[0])
 	}
 }
