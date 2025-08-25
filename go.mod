@@ -1,8 +1,7 @@
 module fjw
 
 go 1.23
-
-toolchain go1.23.1
+toolchain go1.24.1
 
 require (
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
@@ -17,5 +16,5 @@ require (
 	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
 	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
-	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 )
